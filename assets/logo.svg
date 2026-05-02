@@ -1,0 +1,86 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="120" height="120" viewBox="0 0 120 120" fill="none">
+  <defs>
+    <linearGradient id="bg-grad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0d1117"/>
+      <stop offset="100%" stop-color="#161b22"/>
+    </linearGradient>
+    <linearGradient id="wand-grad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#a78bfa"/>
+      <stop offset="100%" stop-color="#7c3aed"/>
+    </linearGradient>
+    <linearGradient id="checker-a" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#4ade80"/>
+      <stop offset="100%" stop-color="#16a34a"/>
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="2.5" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <clipPath id="circle-clip">
+      <circle cx="60" cy="60" r="52"/>
+    </clipPath>
+  </defs>
+
+  <!-- Outer ring -->
+  <circle cx="60" cy="60" r="58" fill="url(#bg-grad)"/>
+  <circle cx="60" cy="60" r="56" fill="none" stroke="#30363d" stroke-width="1"/>
+
+  <!-- Checkerboard transparency pattern (bottom-right quadrant) — indicates transparency -->
+  <g clip-path="url(#circle-clip)">
+    <!-- light squares -->
+    <rect x="58" y="58" width="8" height="8" fill="#2d333b"/>
+    <rect x="74" y="58" width="8" height="8" fill="#2d333b"/>
+    <rect x="90" y="58" width="8" height="8" fill="#2d333b"/>
+    <rect x="66" y="66" width="8" height="8" fill="#2d333b"/>
+    <rect x="82" y="66" width="8" height="8" fill="#2d333b"/>
+    <rect x="58" y="74" width="8" height="8" fill="#2d333b"/>
+    <rect x="74" y="74" width="8" height="8" fill="#2d333b"/>
+    <rect x="90" y="74" width="8" height="8" fill="#2d333b"/>
+    <rect x="66" y="82" width="8" height="8" fill="#2d333b"/>
+    <rect x="82" y="82" width="8" height="8" fill="#2d333b"/>
+    <rect x="58" y="90" width="8" height="8" fill="#2d333b"/>
+    <rect x="74" y="90" width="8" height="8" fill="#2d333b"/>
+    <rect x="90" y="90" width="8" height="8" fill="#2d333b"/>
+    <!-- dark squares (default bg-grad) -->
+    <rect x="66" y="58" width="8" height="8" fill="#161b22"/>
+    <rect x="82" y="58" width="8" height="8" fill="#161b22"/>
+    <rect x="58" y="66" width="8" height="8" fill="#161b22"/>
+    <rect x="74" y="66" width="8" height="8" fill="#161b22"/>
+    <rect x="90" y="66" width="8" height="8" fill="#161b22"/>
+    <rect x="66" y="74" width="8" height="8" fill="#161b22"/>
+    <rect x="82" y="74" width="8" height="8" fill="#161b22"/>
+    <rect x="58" y="82" width="8" height="8" fill="#161b22"/>
+    <rect x="74" y="82" width="8" height="8" fill="#161b22"/>
+    <rect x="90" y="82" width="8" height="8" fill="#161b22"/>
+    <rect x="66" y="90" width="8" height="8" fill="#161b22"/>
+    <rect x="82" y="90" width="8" height="8" fill="#161b22"/>
+  </g>
+
+  <!-- Diagonal "erased" split line -->
+  <line x1="55" y1="62" x2="110" y2="117" stroke="#58a6ff" stroke-width="0.6" stroke-dasharray="3 3" opacity="0.3"/>
+
+  <!-- Subject silhouette (simple person/blob shape — the "foreground" kept) -->
+  <ellipse cx="48" cy="38" rx="12" ry="13" fill="#58a6ff" opacity="0.92"/>
+  <path d="M30 75 C30 58, 38 52, 48 52 C58 52, 66 58, 66 75 L66 82 C66 84, 64 86, 62 86 L34 86 C32 86, 30 84, 30 82 Z"
+        fill="#58a6ff" opacity="0.92"/>
+
+  <!-- Magic wand -->
+  <g filter="url(#glow)">
+    <!-- wand stick -->
+    <line x1="68" y1="52" x2="95" y2="25" stroke="url(#wand-grad)" stroke-width="3.5" stroke-linecap="round"/>
+    <!-- wand tip star -->
+    <path d="M95 25 L97 20 L99 25 L104 27 L99 29 L97 34 L95 29 L90 27 Z"
+          fill="#c4b5fd" stroke="#7c3aed" stroke-width="0.6"/>
+  </g>
+
+  <!-- Sparkles around wand tip -->
+  <circle cx="87" cy="18" r="1.8" fill="#e879f9" opacity="0.9"/>
+  <circle cx="107" cy="20" r="1.2" fill="#a78bfa" opacity="0.85"/>
+  <circle cx="105" cy="35" r="1.5" fill="#4ade80" opacity="0.8"/>
+  <!-- small cross sparkle -->
+  <line x1="82" y1="33" x2="82" y2="39" stroke="#fbbf24" stroke-width="1.2" stroke-linecap="round" opacity="0.8"/>
+  <line x1="79" y1="36" x2="85" y2="36" stroke="#fbbf24" stroke-width="1.2" stroke-linecap="round" opacity="0.8"/>
+
+  <!-- Outer glow ring accent -->
+  <circle cx="60" cy="60" r="56" fill="none" stroke="url(#wand-grad)" stroke-width="1.5" opacity="0.25"/>
+</svg>

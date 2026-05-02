@@ -1,0 +1,10 @@
+# Core dependencies (always needed)
+Pillow>=10.0.0
+numpy>=1.21.0
+
+# AI method — CPU (pick one of the two below)
+rembg>=2.0.50,<3.0
+onnxruntime>=1.16.0
+
+# AI method — NVIDIA GPU (uncomment and comment out onnxruntime above)
+# onnxruntime-gpu>=1.16.0
