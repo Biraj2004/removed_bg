@@ -11,6 +11,7 @@
 [![NumPy](https://img.shields.io/badge/NumPy-1.21%2B-013243?style=flat-square&logo=numpy&logoColor=white)](https://numpy.org)
 [![rembg](https://img.shields.io/badge/rembg-2.x-F97316?style=flat-square)](https://github.com/danielgatis/rembg)
 [![License](https://img.shields.io/badge/License-MIT-22C55E?style=flat-square)](LICENSE)
+[![Guide](https://img.shields.io/badge/Guide-Website-6366F1?style=flat-square&logo=github)](https://biraj2004.github.io/removed_bg/)
 
 </div>
 
@@ -19,6 +20,7 @@
 ## Table of contents
 
 - [Overview](#overview)
+- [Guide website](#guide-website)
 - [Installation](#installation)
 - [Quick start](#quick-start)
 - [Usage](#usage)
@@ -30,6 +32,7 @@
 - [Choosing the right tolerance](#choosing-the-right-tolerance-colour-key)
 - [Tech stack](#tech-stack)
 - [Limitations](#limitations)
+- [Security](#security)
 - [Contributing](#contributing)
 - [License](#license)
 
@@ -38,6 +41,14 @@
 ## Overview
 
 `removed_bg.py` is a single-file Python CLI tool that strips the background from any image and saves a clean, transparent RGBA PNG. No API key, no internet connection after setup, no external service — everything runs locally.
+
+---
+
+## Guide website
+
+Full documentation, usage examples, and interactive demos are available at:
+
+**<https://biraj2004.github.io/removed_bg/>**
 
 | | Method 1 — AI | Method 2 — Colour-key |
 |---|---|---|
@@ -290,6 +301,12 @@ If the output still shows a dark or light fringe, raise `--tolerance` by 10 and 
 
 ---
 
+## Security
+
+To report a security vulnerability, please follow the process described in [SECURITY.md](SECURITY.md) rather than opening a public issue. The file covers supported versions, the private reporting channel, and the coordinated-disclosure policy.
+
+---
+
 ## Contributing
 
 Bug reports and pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
@@ -310,6 +327,6 @@ This project is licensed under the MIT License — see the [LICENSE](LICENSE) fi
 
 <div align="center">
 
-Built by **[Biraj](https://github.com/Biraj2004)**
+Built with Claude by **[Biraj](https://github.com/Biraj2004)**
 
 </div>
