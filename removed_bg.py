@@ -3,23 +3,24 @@ removed_bg.py — Image Background Removal Utility
 ================================================
 Two battle-tested methods:
 
-  METHOD 1 — AI / rembg (RECOMMENDED for any image)
-      Deep learning via U2-Net. Handles photos, logos, complex scenes,
-      hair, fur, glass, semi-transparent edges. Downloads ~170MB model
-      on first run (cached at ~/.u2net/).
+  METHOD 1 — AI / rembg (RECOMMENDED for general images)
+      Deep learning via U2-Net/IS-Net. Handles photos, logos, complex scenes,
+      hair, fur, glass, semi-transparent edges. Downloads the model on first
+      run (cached at ~/.u2net/).
 
-      python removed_bg.py logo.png out.png --method ai
+      Select a specific model (e.g. high-accuracy isnet-general-use):
+      python removed_bg.py photo.jpg out.png --method ai --model isnet-general-use
 
-  METHOD 2 — Colour-key (fast, for solid known backgrounds only)
-      Pure NumPy + Pillow. Works perfectly on logos with uniform
-      backgrounds (black, white, or any specific hex). Uses Euclidean
+      Run with forced NVIDIA GPU (CUDA) acceleration:
+      python removed_bg.py photo.jpg out.png --method ai --gpu
+
+  METHOD 2 — Colour-key (fast, preserves dots/fine details for uniform backgrounds)
+      Pure NumPy + Pillow. Works perfectly on handwriting signatures, logos with uniform
+      backgrounds (black, white, or any specific RGB). Uses Euclidean
       distance in RGB space with a feathered alpha ramp and Gaussian
       blur for smooth edges.
 
-      python removed_bg.py logo.png out.png --method colorkey
-      python removed_bg.py logo.png out.png --method colorkey --bg-color 0,0,0
-      python removed_bg.py logo.png out.png --method colorkey --bg-color 255,255,255 --tolerance 40
-      python removed_bg.py logo.png out.png --method colorkey --bg-color 30,27,75 --feather 5
+      python removed_bg.py signature.png out.png --method colorkey --bg-color 235,235,235 --tolerance 50 --feather 2
 
   Single file (output auto-derived as <stem>_nobg.png):
       python removed_bg.py logo.png --method colorkey
@@ -63,17 +64,24 @@ IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp", ".bmp", ".tiff", ".tif"}
 # METHOD 1 — AI-based removal (rembg / U2-Net)
 # ─────────────────────────────────────────────────────────────────────────────
 
-def remove_bg_ai(input_path: str, output_path: str) -> Image.Image:
+def remove_bg_ai(
+    input_path: str,
+    output_path: str,
+    model_name: str = "u2net",
+    force_gpu: bool = False,
+) -> Image.Image:
     """
-    Remove background using U2-Net deep learning model via rembg.
+    Remove background using deep learning model via rembg.
 
     Produces a clean RGBA PNG with proper alpha matting on all edges,
     including semi-transparent regions, hair, and complex silhouettes.
-    Downloads the U2-Net ONNX model (~170 MB) on first run and caches it.
+    Downloads the ONNX model on first run and caches it.
 
     Args:
         input_path:  Path to the input image (PNG, JPG, WEBP, etc.).
         output_path: Path to write the output RGBA PNG.
+        model_name:  The name of the rembg model to use (default: u2net).
+        force_gpu:   Whether to force using the GPU (CUDAExecutionProvider).
 
     Returns:
         PIL Image (RGBA) of the result.
@@ -90,9 +98,48 @@ def remove_bg_ai(input_path: str, output_path: str) -> Image.Image:
     _log(f"[AI] Input  : {input_path}")
     img = Image.open(input_path)
 
-    # rembg handles RGB/RGBA internally — pass the image as-is
-    _log("[AI] Running U2-Net inference (first run downloads ~170 MB model) …")
-    result: Image.Image = remove(img)
+    # Configure execution providers for ONNX Runtime
+    providers = None
+    if force_gpu:
+        providers = ["CUDAExecutionProvider"]
+        _log("[AI] Forcing NVIDIA GPU (CUDAExecutionProvider)...")
+    else:
+        # Check if CUDA is available in onnxruntime
+        try:
+            import onnxruntime as ort
+            if "CUDAExecutionProvider" in ort.get_available_providers():
+                providers = ["CUDAExecutionProvider", "CPUExecutionProvider"]
+                _log("[AI] NVIDIA GPU (CUDAExecutionProvider) is available.")
+            else:
+                _log("[AI] CUDAExecutionProvider not found in ONNX Runtime. Falling back to CPU.")
+        except Exception:
+            pass
+
+    _log(f"[AI] Initializing session with model '{model_name}'...")
+    try:
+        session = new_session(model_name, providers=providers)
+        # Verify if CUDA was actually loaded when force_gpu is True
+        if force_gpu and "CUDAExecutionProvider" not in session.inner_session.get_providers():
+            _die(
+                "NVIDIA GPU (CUDAExecutionProvider) was requested, but ONNX Runtime is running on CPU.\n"
+                "Error details: ONNX Runtime failed to load CUDA DLLs (e.g. cublasLt64_12.dll is missing).\n"
+                "To resolve this, please install NVIDIA CUDA Toolkit 12.x and add it to your Windows PATH:\n"
+                "  1. Download: https://developer.nvidia.com/cuda-downloads\n"
+                "  2. Add 'C:\\Program Files\\NVIDIA GPU Computing Toolkit\\CUDA\\v12.x\\bin' to your System Env Path\n"
+                "  3. Restart your terminal / editor and try again."
+            )
+    except Exception as e:
+        if force_gpu:
+            _die(
+                f"Failed to initialize CUDA session: {e}\n"
+                "Please check your CUDA/cuDNN installation."
+            )
+        else:
+            _log(f"[WARN] Session initialization failed: {e}. Retrying with defaults...")
+            session = new_session(model_name)
+
+    _log(f"[AI] Running model inference (downloads '{model_name}' on first run if needed) ...")
+    result: Image.Image = remove(img, session=session)
 
     _ensure_dir(output_path)
     result.save(output_path)
@@ -205,13 +252,13 @@ def _quality_report(img: Image.Image) -> None:
                int(data[-1, 0, 3]), int(data[-1, -1, 3])]
 
     print()
-    print("── Quality report ───────────────────────────────────────────────")
-    print(f"   Size          : {img.size[0]} × {img.size[1]} px")
+    print("== Quality report ===============================================")
+    print(f"   Size          : {img.size[0]} x {img.size[1]} px")
     print(f"   Transparent   : {transparent:>10,}  ({100*transparent/total:5.1f}%)")
     print(f"   Opaque        : {opaque:>10,}  ({100*opaque/total:5.1f}%)")
-    print(f"   Semi-trans    : {semi:>10,}  ({100*semi/total:5.1f}%)  ← edge matting")
-    print(f"   Corner alphas : {corners}  ← should all be ≈ 0 if BG removed")
-    print("─────────────────────────────────────────────────────────────────")
+    print(f"   Semi-trans    : {semi:>10,}  ({100*semi/total:5.1f}%)  <- edge matting")
+    print(f"   Corner alphas : {corners}  <- should all be ~ 0 if BG removed")
+    print("=================================================================")
     print()
 
 
@@ -367,6 +414,20 @@ def _build_parser() -> argparse.ArgumentParser:
         ),
     )
     p.add_argument(
+        "--model",
+        default="u2net",
+        help=(
+            "AI model to use (ai method only). "
+            "Examples: u2net (default), u2netp (lightweight), isnet-general-use (high accuracy), "
+            "u2net_human_seg, silueta, sam."
+        ),
+    )
+    p.add_argument(
+        "--gpu",
+        action="store_true",
+        help="Force using NVIDIA GPU (CUDAExecutionProvider) for AI model. Errors out if CUDA is unavailable.",
+    )
+    p.add_argument(
         "--batch",
         action="store_true",
         help=(
@@ -395,6 +456,12 @@ def main() -> None:
     parser = _build_parser()
     args = parser.parse_args()
     _QUIET = args.quiet
+
+    # If two positional arguments are provided without --batch, argparse groups
+    # both into args.input due to nargs="+". We reconstruct the intended input and output.
+    if not args.batch and len(args.input) == 2 and args.output is None:
+        args.output = args.input[1]
+        args.input = [args.input[0]]
 
     # ── Resolve input paths (files, globs, and directories) ──────────────────
     paths = _expand_paths(args.input)
@@ -426,7 +493,7 @@ def main() -> None:
 
 def _run(args: argparse.Namespace, input_path: str, output_path: str) -> None:
     if args.method == "ai":
-        remove_bg_ai(input_path, output_path)
+        remove_bg_ai(input_path, output_path, model_name=args.model, force_gpu=args.gpu)
     else:
         remove_bg_colorkey(
             input_path,

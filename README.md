@@ -78,6 +78,13 @@ pip install rembg onnxruntime-gpu
 
 > **Python 3.8+** required. Tested on 3.9, 3.10, 3.11, and 3.12.
 
+### GPU Acceleration Requirements (CUDA)
+To use `--gpu` mode with `onnxruntime-gpu`, your machine must have:
+1. A compatible NVIDIA GPU with installed drivers.
+2. NVIDIA CUDA Toolkit (version 12.x matches `onnxruntime-gpu` 1.23+).
+3. The CUDA `bin` path (e.g. `C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.x\bin` on Windows) added to your system environment `Path` variable.
+*(If CUDA DLLs are missing or incorrectly configured, the script will catch it and display setup instructions.)*
+
 **Optional — pin versions for reproducible environments:**
 
 ```
@@ -151,12 +158,25 @@ python removed_bg.py images/ --batch --out-dir ./nobg/
 
 > If no supported images are found in the folder, the script prints a warning and exits cleanly.
 
+### Output Naming Rules
+
+The name and location of the saved output files are determined by the mode and arguments you supply:
+
+| Mode | Command Example | Output Location & Naming |
+|---|---|---|
+| **Single File (Explicit)** | `python removed_bg.py in.jpg custom.png` | Saves exactly as `custom.png` at the specified path. |
+| **Single File (Auto-derived)** | `python removed_bg.py in.jpg` | Appends `_nobg.png` to the file name and saves it in the original folder (`in_nobg.png`). |
+| **Batch (with `--out-dir`)** | `python removed_bg.py images/ --batch --out-dir ./nobg/` | Saves all outputs as `<stem>_nobg.png` inside the target directory (e.g. `nobg/image_nobg.png`). |
+| **Batch (without `--out-dir`)** | `python removed_bg.py images/ --batch` | Saves all outputs as `<stem>_nobg.png` in their respective original parent folders. |
+
 ### All options
 
 | Flag | Default | Description |
 |---|---|---|
 | `output` | `<stem>_nobg.png` | Output PNG path (single-file mode only). |
-| `--method` | `ai` | `ai` — U2-Net deep learning. `colorkey` — solid colour removal. |
+| `--method` | `ai` | `ai` — deep learning. `colorkey` — solid colour removal. |
+| `--model` | `u2net` | AI model to use (ai method only). Examples: `u2net` (default), `isnet-general-use` (high accuracy), `u2netp` (fast/lightweight), `u2net_human_seg`, `silueta`, `sam`. |
+| `--gpu` | — | Force NVIDIA GPU execution (`CUDAExecutionProvider`). Errors out if CUDA is unavailable. |
 | `--bg-color R,G,B` | `0,0,0` | Background colour to remove. *(colorkey only)* |
 | `--tolerance N` | `30` | RGB distance threshold. Raise to `50–80` for JPEG artefacts. *(colorkey only)* |
 | `--feather N` | `3` | Gaussian blur radius on the alpha mask (0–10). *(colorkey only)* |
@@ -265,7 +285,35 @@ python removed_bg.py "src/icons/*.png" "src/banners/*.jpg" \
 
 ---
 
-## Choosing the right tolerance (colour-key)
+## Tips for 99% Accuracy (Getting the Best Cutout)
+
+To achieve perfect 99% background removal accuracy, choose the right method, model, and parameters based on the type of image:
+
+### A. For Handwriting, Signatures, Logos, and Thin Line-Art
+Salient object detection models (`u2net`/`isnet`) are trained to look for large foreground subjects. They will often strip away isolated details like **dots on `i` and `j`** or thin signature lines.
+
+*   **Solution**: Use `--method colorkey` with the exact background color.
+*   **Step 1**: Find the exact background color of the image corners (e.g. by using Python or a color picker):
+    ```bash
+    python -c "from PIL import Image; img = Image.open('your_image.jpg'); print('Corner color:', img.getpixel((0,0)))"
+    ```
+*   **Step 2**: Run the color-key method using that exact color and a custom tolerance (typically `40–60` for JPEG compression):
+    ```bash
+    python removed_bg.py signature.jpg clean.png --method colorkey --bg-color 235,235,235 --tolerance 50 --feather 2
+    ```
+
+### B. For Complex Photos, People, and Products
+For general photos, the AI method (`--method ai`) is best. You can select the specific model that fits your subject:
+
+*   **For Ultra-High Accuracy (e.g., hair, detailed silhouettes)**: Use the modern **`isnet-general-use`** model. It reduces semi-transparent edge artifacts by over 60% compared to the default model:
+    ```bash
+    python removed_bg.py photo.jpg clean.png --method ai --model isnet-general-use
+    ```
+*   **For Human Portraits / People**: Use **`u2net_human_seg`** for optimized skin/hair boundaries.
+*   **For Clothes**: Use **`u2net_cloth_seg`**.
+*   **For Fast/Low-Resource Environments**: Use **`u2netp`** (lightweight U2-Net) or **`silueta`** (43MB model).
+
+### C. Choosing the Right Tolerance (Colour-key)
 
 | Image type | Recommended `--tolerance` |
 |---|---|
@@ -274,7 +322,8 @@ python removed_bg.py "src/icons/*.png" "src/banners/*.jpg" \
 | JPEG with heavy compression | `55–80` |
 | Gradient or textured background | ❌ Use `--method ai` instead |
 
-If the output still shows a dark or light fringe, raise `--tolerance` by 10 and retry.
+*   If the output still shows a dark or light fringe, raise `--tolerance` by 10 and retry.
+*   To make edges softer and reduce jagged borders, use `--feather` (values between `1` and `4` are ideal).
 
 ---
 
