@@ -1177,6 +1177,7 @@
           <tr><td>Quality</td><td>Professional (hair, fur, glass)</td><td>Good for flat-background images</td></tr>
           <tr><td>Speed</td><td>Slower (model inference)</td><td>⚡ Fast (pure NumPy)</td></tr>
           <tr><td>Offline</td><td>After first model download</td><td><span class="check">✔</span> Fully offline</td></tr>
+          <tr><td>GPU acceleration</td><td><span class="check">✔</span> CUDA GPU supported (via <code>--gpu</code>)</td><td>❌ CPU only (no model inference needed)</td></tr>
           <tr><td>Extra deps</td><td><code>rembg</code> + <code>onnxruntime</code></td><td><code>Pillow</code> + <code>numpy</code> only</td></tr>
         </tbody>
       </table>
@@ -1275,14 +1276,17 @@
             <span class="code-title">single file</span>
             <button class="copy-btn" onclick="copyCode(this)">copy</button>
           </div>
-          <pre><span class="c-comment"># Output auto-derived as photo_nobg.png</span>
+          <pre><span class="c-comment"># AI method (defaults to high-accuracy model isnet-general-use)</span>
 <span class="c-cmd">python</span> <span class="c-path">removed_bg.py</span> <span class="c-str">photo.jpg</span>
 
-<span class="c-comment"># Explicit output path</span>
-<span class="c-cmd">python</span> <span class="c-path">removed_bg.py</span> <span class="c-str">photo.jpg</span> <span class="c-str">out/clean.png</span>
+<span class="c-comment"># Force GPU acceleration</span>
+<span class="c-cmd">python</span> <span class="c-path">removed_bg.py</span> <span class="c-str">photo.jpg</span> <span class="c-flag">--gpu</span>
 
-<span class="c-comment"># Colour-key — white background</span>
-<span class="c-cmd">python</span> <span class="c-path">removed_bg.py</span> <span class="c-str">logo.png</span> <span class="c-flag">--method</span> colorkey <span class="c-flag">--bg-color</span> 255,255,255</pre>
+<span class="c-comment"># Colour-key — auto-detect background color (looks at corners)</span>
+<span class="c-cmd">python</span> <span class="c-path">removed_bg.py</span> <span class="c-str">signature.png</span> <span class="c-flag">--method</span> colorkey
+
+<span class="c-comment"># Explicit output path with custom model</span>
+<span class="c-cmd">python</span> <span class="c-path">removed_bg.py</span> <span class="c-str">photo.jpg</span> <span class="c-str">out/clean.png</span> <span class="c-flag">--model</span> u2net</pre>
         </div>
       </div>
 
@@ -1353,12 +1357,22 @@
       <div class="opt-row">
         <div class="opt-flag">--method</div>
         <div class="opt-default">ai</div>
-        <div class="opt-desc"><code>ai</code> — U2-Net deep learning. <code>colorkey</code> — fast solid-colour removal.</div>
+        <div class="opt-desc"><code>ai</code> — deep learning. <code>colorkey</code> — fast solid-colour removal.</div>
+      </div>
+      <div class="opt-row">
+        <div class="opt-flag">--model</div>
+        <div class="opt-default">isnet-general-use</div>
+        <div class="opt-desc">AI model to use (ai method only). Examples: <code>isnet-general-use</code> (high accuracy), <code>u2net</code> (standard), <code>u2netp</code> (lightweight), <code>sam</code>.</div>
+      </div>
+      <div class="opt-row">
+        <div class="opt-flag">--gpu</div>
+        <div class="opt-default">off</div>
+        <div class="opt-desc">Force NVIDIA GPU execution (<code>CUDAExecutionProvider</code>). Errors out if CUDA is unavailable.</div>
       </div>
       <div class="opt-row">
         <div class="opt-flag">--bg-color R,G,B</div>
-        <div class="opt-default">0,0,0</div>
-        <div class="opt-desc">Background colour to remove. Colour-key only. Example: <code>255,255,255</code> for white.</div>
+        <div class="opt-default">auto</div>
+        <div class="opt-desc">Background colour to remove (colorkey only). If <code>auto</code>, automatically samples the 4 corner pixels of the image. Example: <code>255,255,255</code> for white.</div>
       </div>
       <div class="opt-row">
         <div class="opt-flag">--tolerance N</div>
@@ -1424,7 +1438,7 @@
           Colour-key algorithm
         </h3>
         <div class="how-steps">
-          <div class="how-step"><span class="how-step-n">1</span><p>Convert to RGBA <code>float32</code>.</p></div>
+          <div class="how-step"><span class="how-step-n">1</span><p>Convert to RGBA <code>float32</code>. Resolve background color (auto-detects from corners if set to <code>auto</code>).</p></div>
           <div class="how-step"><span class="how-step-n">2</span><p>Per-pixel Euclidean distance from <code>--bg-color</code> in RGB space: <code>dist = √((R−Br)²+(G−Bg)²+(B−Bb)²)</code></p></div>
           <div class="how-step"><span class="how-step-n">3</span><p>Build alpha mask: <code>dist &lt; tol → 0.0</code> · linear ramp in feather zone · <code>dist ≥ 2×tol → 1.0</code></p></div>
           <div class="how-step"><span class="how-step-n">4</span><p>Gaussian blur (radius = <code>--feather</code>) for sub-pixel anti-aliasing. Write RGBA PNG.</p></div>
