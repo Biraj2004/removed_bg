@@ -155,7 +155,7 @@ def remove_bg_ai(
 def remove_bg_colorkey(
     input_path: str,
     output_path: str,
-    bg_color: tuple[int, int, int] = (0, 0, 0),
+    bg_color: tuple[int, int, int] | str = "auto",
     tolerance: int = 30,
     edge_feather: int = 3,
 ) -> Image.Image:
@@ -178,8 +178,8 @@ def remove_bg_colorkey(
     Args:
         input_path:   Path to the input image.
         output_path:  Path to write the output RGBA PNG.
-        bg_color:     (R, G, B) of the background colour to remove.
-                      Default (0, 0, 0) = black.
+        bg_color:     (R, G, B) of the background colour to remove or 'auto'.
+                      Default 'auto' will auto-detect background color from corners.
         tolerance:    Pixels within this distance of bg_color become
                       transparent. Increase to 50–80 for JPEG-compressed
                       images with artefacts. Default 30.
@@ -202,10 +202,18 @@ def remove_bg_colorkey(
     _log(f"[CK] Feather    = {edge_feather}")
 
     img = Image.open(input_path).convert("RGBA")
+
+    # Resolve auto background color if requested
+    if bg_color == "auto":
+        resolved_bg = _detect_bg_color(img)
+        _log(f"[CK] Auto-detected BG colour: {resolved_bg}")
+    else:
+        resolved_bg = bg_color
+
     data = np.array(img, dtype=np.float32)  # shape: (H, W, 4)
 
     r, g, b = data[:, :, 0], data[:, :, 1], data[:, :, 2]
-    br, bg_, bb = float(bg_color[0]), float(bg_color[1]), float(bg_color[2])
+    br, bg_, bb = float(resolved_bg[0]), float(resolved_bg[1]), float(resolved_bg[2])
 
     # ── Euclidean distance in RGB space ──────────────────────────────────────
     dist = np.sqrt((r - br) ** 2 + (g - bg_) ** 2 + (b - bb) ** 2)
@@ -234,6 +242,39 @@ def remove_bg_colorkey(
     _log(f"[CK] Output : {output_path}")
     _quality_report(result)
     return result
+
+
+def _detect_bg_color(img: Image.Image) -> tuple[int, int, int]:
+    """
+    Sample the 4 corners of the image. If they are close in color,
+    return the average color. Otherwise default to (0, 0, 0) (black).
+    """
+    w, h = img.size
+    img_rgb = img.convert("RGB")
+    corners = [
+        img_rgb.getpixel((0, 0)),
+        img_rgb.getpixel((w - 1, 0)),
+        img_rgb.getpixel((0, h - 1)),
+        img_rgb.getpixel((w - 1, h - 1)),
+    ]
+    # Check max variance / difference between corners
+    max_diff = 0
+    for i in range(4):
+        for j in range(i + 1, 4):
+            diff = sum(abs(c1 - c2) for c1, c2 in zip(corners[i], corners[j]))
+            if diff > max_diff:
+                max_diff = diff
+
+    # If maximum RGB distance sum between any two corners is less than 150,
+    # assume a uniform background and average the colors.
+    if max_diff < 150:
+        avg_color = tuple(
+            int(sum(c[idx] for c in corners) / 4)
+            for idx in range(3)
+        )
+        return avg_color
+
+    return (0, 0, 0)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -322,11 +363,13 @@ def _expand_paths(raw_inputs: list[str]) -> list[str]:
 # CLI
 # ─────────────────────────────────────────────────────────────────────────────
 
-def _parse_color(s: str) -> tuple[int, int, int]:
+def _parse_color(s: str) -> tuple[int, int, int] | str:
+    if s.strip().lower() == "auto":
+        return "auto"
     parts = [p.strip() for p in s.split(",")]
     if len(parts) != 3:
         raise argparse.ArgumentTypeError(
-            f"Color must be R,G,B  (e.g. 0,0,0 or 255,255,255).  Got: {s!r}"
+            f"Color must be R,G,B  (e.g. 0,0,0 or 255,255,255) or 'auto'.  Got: {s!r}"
         )
     try:
         r, g, b = (int(p) for p in parts)
@@ -383,12 +426,12 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     p.add_argument(
         "--bg-color",
-        default="0,0,0",
+        default="auto",
         type=_parse_color,
         metavar="R,G,B",
         help=(
             "Background colour to remove (colorkey only).  "
-            "Default: 0,0,0 (black).  "
+            "Default: auto (automatically samples image corners).  "
             "Example: --bg-color 255,255,255 for white."
         ),
     )
@@ -415,11 +458,11 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     p.add_argument(
         "--model",
-        default="u2net",
+        default="isnet-general-use",
         help=(
             "AI model to use (ai method only). "
-            "Examples: u2net (default), u2netp (lightweight), isnet-general-use (high accuracy), "
-            "u2net_human_seg, silueta, sam."
+            "Examples: isnet-general-use (default, high accuracy), u2net (standard), "
+            "u2netp (lightweight), u2net_human_seg, silueta, sam."
         ),
     )
     p.add_argument(

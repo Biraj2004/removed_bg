@@ -107,7 +107,10 @@ pip install -r requirements.txt
 # Single image — AI method (output auto-named photo_nobg.png)
 python removed_bg.py photo.jpg
 
-# Single image — colour-key, white background, explicit output path
+# Single image — colour-key, auto-detect background color (looks at corners)
+python removed_bg.py signature.png --method colorkey
+
+# Single image — colour-key, specify explicit background color (white)
 python removed_bg.py logo.png logo_nobg.png --method colorkey --bg-color 255,255,255
 
 # Batch — entire folder
@@ -175,9 +178,9 @@ The name and location of the saved output files are determined by the mode and a
 |---|---|---|
 | `output` | `<stem>_nobg.png` | Output PNG path (single-file mode only). |
 | `--method` | `ai` | `ai` — deep learning. `colorkey` — solid colour removal. |
-| `--model` | `u2net` | AI model to use (ai method only). Examples: `u2net` (default), `isnet-general-use` (high accuracy), `u2netp` (fast/lightweight), `u2net_human_seg`, `silueta`, `sam`. |
+| `--model` | `isnet-general-use` | AI model to use (ai method only). Examples: `isnet-general-use` (default, high accuracy), `u2net` (standard), `u2netp` (fast/lightweight), `u2net_human_seg`, `silueta`, `sam`. |
 | `--gpu` | — | Force NVIDIA GPU execution (`CUDAExecutionProvider`). Errors out if CUDA is unavailable. |
-| `--bg-color R,G,B` | `0,0,0` | Background colour to remove. *(colorkey only)* |
+| `--bg-color R,G,B` | `auto` | Background colour to remove. If `auto` (default), samples the 4 corner pixels of the image and averages them. *(colorkey only)* |
 | `--tolerance N` | `30` | RGB distance threshold. Raise to `50–80` for JPEG artefacts. *(colorkey only)* |
 | `--feather N` | `3` | Gaussian blur radius on the alpha mask (0–10). *(colorkey only)* |
 | `--batch` | — | Enable batch mode. Required for multiple files, globs, or a directory. |
